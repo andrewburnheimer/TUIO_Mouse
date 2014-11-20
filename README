@@ -1,0 +1,14 @@
+TUIO_Mouse
+==========
+
+Setting Up Logging
+------------------
+
+Logging to the Windows Event Viewer is provided by [log4jna] [1].
+
+Please follow the instructions provided by that project about [creating
+keys in the registry] [2].
+
+[1]: https://github.com/dblock/log4jna
+
+[2]: https://github.com/dblock/log4jna/blob/master/doc/org.apache.log4jna.nt.Win32EventLogAppender.md#registry
