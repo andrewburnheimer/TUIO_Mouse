@@ -30,13 +30,14 @@ import org.apache.log4j.PropertyConfigurator;
 
 public class TuioMouse implements TuioListener {
 	private static final long LOCK_EXPIRY = 10 * 1000;
-
+	private static final long DOUBLE_CLICK_TOLERANCE = 200;
 	private Robot robot = null;
 	private int width = 0;
 	private int height = 0;
 	private long mouse = -1;
 	private Date locked;
 	private Logger logger;
+	private Date lastClick;
 
 	public void addTuioObject(TuioObject tobj) {}
 	public void updateTuioObject(TuioObject tobj) {}
@@ -57,15 +58,23 @@ public class TuioMouse implements TuioListener {
 			// Block is entered on all single-touch events
 			if (mouse<0)
 			{
-				logger.debug("addTuioCursor - Top: " + mouse);
+				logger.debug("addTuioCursor - single-touch: " + mouse);
 				mouse = tcur.getSessionID();
-				if (robot!=null) robot.mouseMove(tcur.getScreenX(width),tcur.getScreenY(height));
+				if (robot!=null &&
+						now.after( new Date(lastClick.getTime() +
+																DOUBLE_CLICK_TOLERANCE) ) )
+				{
+					robot.mouseMove(tcur.getScreenX(width),tcur.getScreenY(height));
+				} else {
+					logger.debug("Not moving, second of a double-click");
+				}
+				lastClick = now;
 				if (robot!=null) robot.mousePress(InputEvent.BUTTON1_MASK);
 			}
 			else // Block entered on multi-touch events: once for two fingers
 			     // twice for three fingers ... four times for five fingers.
 			{
-				logger.debug("addTuioCursor - Bottom: " + mouse);
+				logger.debug("addTuioCursor - multi-touch: " + mouse);
 				if (robot != null) robot.mouseRelease(InputEvent.BUTTON1_MASK);
 			}
 			locked = new Date(0);
@@ -107,6 +116,7 @@ public class TuioMouse implements TuioListener {
 		width  = (int)Toolkit.getDefaultToolkit().getScreenSize().getWidth();
 		height = (int)Toolkit.getDefaultToolkit().getScreenSize().getHeight();
 		locked = new Date(0);
+		lastClick = new Date(0);
 	}
 
 	public static void main(String argv[]) {
