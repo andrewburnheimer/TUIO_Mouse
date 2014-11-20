@@ -27,16 +27,18 @@ import java.util.Date;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.apache.log4j.PropertyConfigurator;
+import org.apache.commons.cli.*;
 
 public class TuioMouse implements TuioListener {
 	private static final long LOCK_EXPIRY = 10 * 1000;
-	private static final long DOUBLE_CLICK_TOLERANCE = 200;
+	private static long doubleClickTolerance;
+	private static String loggingConfigFile;
+	private static Logger logger;
 	private Robot robot = null;
 	private int width = 0;
 	private int height = 0;
 	private long mouse = -1;
 	private Date locked;
-	private Logger logger;
 	private Date lastClick;
 
 	public void addTuioObject(TuioObject tobj) {}
@@ -62,7 +64,7 @@ public class TuioMouse implements TuioListener {
 				mouse = tcur.getSessionID();
 				if (robot!=null &&
 						now.after( new Date(lastClick.getTime() +
-																DOUBLE_CLICK_TOLERANCE) ) )
+																doubleClickTolerance) ) )
 				{
 					robot.mouseMove(tcur.getScreenX(width),tcur.getScreenY(height));
 				} else {
@@ -96,21 +98,15 @@ public class TuioMouse implements TuioListener {
 	}
 
 	public TuioMouse() {
-		PropertyConfigurator.configureAndWatch("log4jna_tuio.properties");
+		PropertyConfigurator.configureAndWatch(loggingConfigFile);
 		logger = LogManager.getLogger(TuioMouse.class);
-		try {
-			logger.info("TuioMouse process started...");
-		} catch (Throwable t) {
-			System.out.println("Failed to report event to OS");
-			t.printStackTrace();
-		}
 		
 		try { robot = new Robot(); }
 		catch (Exception e) {
 			String message = "failed to initialize mouse robot";
 			logger.fatal(message);
 			System.out.println(message);
-			System.exit(0);
+			System.exit(1);
 		}
 
 		width  = (int)Toolkit.getDefaultToolkit().getScreenSize().getWidth();
@@ -120,18 +116,64 @@ public class TuioMouse implements TuioListener {
 	}
 
 	public static void main(String argv[]) {
+		CommandLineParser parser = new BasicParser();
 
-		int port = 3333;
+		Options options = new Options();
+		options.addOption("h", "help", false, "display this usage statement");
+		options.addOption("l", "log-config", true, "filename with logging " +
+				"configuration (Default: \"log4jna_tuio.properties\")");
+		options.addOption("p", "port", true, "port number to run service " +
+				"over (Default: 3333)");
+		options.addOption("t", "tolerance", true, "milliseconds within " +
+				"which double-clicks should occur (Default: 200)");
+		int port = 0;
 
-		if (argv.length==1) {
-			try { port = Integer.parseInt(argv[1]); }
-			catch (Exception e) { System.out.println("usage: java TuioMouse [port]"); }
+		try {
+			CommandLine cmd = parser.parse( options, argv );
+
+			if(cmd.hasOption("h")) {
+				HelpFormatter formatter = new HelpFormatter();
+				formatter.printHelp( "TuioMouse", options );
+				System.exit(0);
+			}
+
+			if(cmd.hasOption("l")) {
+				loggingConfigFile = cmd.getOptionValue("l");
+			}
+			else {
+				loggingConfigFile = "log4jna_tuio.properties";
+			}
+
+			if(cmd.hasOption("p")) {
+				port = Integer.parseInt(cmd.getOptionValue("p"));
+			}
+			else {
+				port = 3333;
+			}
+
+			if(cmd.hasOption("t")) {
+				doubleClickTolerance = Integer.parseInt(cmd.getOptionValue("t"));
+			}
+			else {
+				doubleClickTolerance = 200;
+			}
+		}
+		catch ( ParseException exp ) {
+			System.out.println("Unexpected exception: " + exp.getMessage() );
+			HelpFormatter formatter = new HelpFormatter();
+			formatter.printHelp( "TuioMouse", options );
+			System.exit(1);
 		}
 
  		TuioMouse mouse = new TuioMouse();
 		TuioClient client = new TuioClient(port);
 
-		System.out.println("listening to TUIO messages at port "+port);
+		try {
+			logger.info("TuioMouse process started on port " + port);
+		} catch (Throwable t) {
+			System.out.println("Unable to report events to OS");
+			t.printStackTrace();
+		}
 		client.addTuioListener(mouse);
 		client.connect();
 	}
