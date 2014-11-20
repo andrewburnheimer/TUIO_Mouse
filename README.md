@@ -54,4 +54,4 @@ Contributing
 Build with the following commands:
 
     $ javac -Xlint:unchecked -O -source 1.5 -target 1.5 -cp ./lib/platform.jar:./lib/jna.jar:./lib/log4jna.jar:./lib/log4j-1.2.17.jar:./lib/libTUIO.jar:./lib/commons-cli-1.2.jar TuioMouse.java
-		$ jar cfm bin/TuioMouse.jar mouseManifest.inc TuioMouse.class
+    $ jar cfm bin/TuioMouse.jar mouseManifest.inc TuioMouse.class
